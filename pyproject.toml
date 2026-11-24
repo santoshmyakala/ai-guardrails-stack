@@ -1,0 +1,46 @@
+[project]
+name = "guardstack"
+version = "1.0.0"
+description = "Four layers of guardrails around LLM agents: input, tool, output and policy."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "GPL-3.0-only"
+authors = [{ name = "Santoshkumar Myakala" }]
+dependencies = [
+  "fastapi==0.165.0",
+  "uvicorn==0.54.0",
+  "httpx==0.28.1",
+  "pydantic==2.14.4",
+  "jsonschema==4.26.0",
+  "prometheus-client==0.26.0",
+  "pyyaml==6.0.3",
+]
+
+[project.optional-dependencies]
+test = ["pytest==9.2.0", "ruff==0.16.9"]
+
+[project.scripts]
+guardstack = "guardstack.cli:main"
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["docker: needs a Docker engine (sandbox and OPA tests)"]
+
+[tool.ruff]
+line-length = 140
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+# Detection rule tables: one regex per line reads better than split string fragments.
+"src/guardstack/input/injection.py" = ["E501"]
+"src/guardstack/input/pii.py" = ["E501"]

@@ -1,0 +1,9 @@
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+audit*.jsonl
+redteam-report.md
+guardstack.yml
+.env

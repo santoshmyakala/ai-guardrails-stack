@@ -1,0 +1,46 @@
+# guardstack configuration. Thresholds trade false positives against misses; the red-team report
+# (`guardstack redteam`) shows what a change does before it ships.
+agents:
+  support-bot:
+    tools: [search_docs, http_fetch, send_email, refund_payment, delete_record]
+    scopes: [docs:read, web:read, email:send, payments:refund, records:delete]
+    allowed_domains: [example.com, python.org]
+    internal_domains: [acme.example]
+    max_refund: 500
+    refund_approval_over: 100
+  analyst:
+    tools: [search_docs, run_python]
+    scopes: [docs:read, code:execute]
+
+approvers: [alice@acme.example, bob@acme.example]
+
+input:
+  prompt_threshold: 0.8     # block a user prompt at or above this rule score
+  document_threshold: 0.5   # drop a retrieved document at or above this score
+  topics:
+    denied:
+      medical_advice: ['diagnos\w*', 'prescri\w*', 'dosage', 'what medication']
+      legal_advice: ['sue (my|the|them)', 'lawsuit', 'legal advice']
+      weapons: ['make a (bomb|weapon)', 'build an? (explosive|bomb)', '3d.print(ed)? gun']
+    allowed: {}             # e.g. {billing: [invoice, refund, payment], orders: [order, delivery]}
+
+output:
+  grounding_min_support: 0.5  # share of a sentence's content words a source must contain
+  grounding_block_below: 0.5  # block when fewer than half of the sentences are supported
+  restore_pii: false          # put the user's own redacted values back into the answer
+  format_repairs: 1           # one retry when a structured answer fails its schema
+
+policy:
+  opa_url: http://127.0.0.1:8181
+
+max_steps: 6
+
+# Who may call the HTTP API (`guardstack serve`). Only SHA-256 digests of the keys are stored:
+#   python -c "import hashlib,secrets; k=secrets.token_urlsafe(32); print(k, hashlib.sha256(k.encode()).hexdigest())"
+callers: []
+#  - {name: support-portal, role: client, key_sha256: <digest>}
+#  - {name: alice@acme.example, role: approver, key_sha256: <digest>}
+
+# Knowledge base for the search_docs tool (a stand-in for your retrieval system).
+documents: []
+#  - {id: KB-1, text: "Refunds are issued to the original payment method within 5 working days."}

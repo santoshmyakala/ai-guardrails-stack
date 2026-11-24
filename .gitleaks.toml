@@ -1,0 +1,12 @@
+# Default gitleaks rules, plus one exception: the red-team corpus and its tests contain
+# deliberately fake secrets (AWS's documented example key, a made-up GitHub token, a throw-away
+# RSA key) so that leak prevention can be tested. None of them grants access to anything.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic secrets used as red-team fixtures"
+paths = [
+  '''^redteam/attacks\.yaml$''',
+  '''^tests/test_output\.py$''',
+]

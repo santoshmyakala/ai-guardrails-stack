@@ -1,0 +1,71 @@
+- out: architecture
+  title: Four guardrail layers around a tool-calling model
+  subtitle: Input is screened before the model, every tool call is decided by policy, every answer is checked before the user, and every decision is audited
+  grid: {dx: 255, dy: 165}
+  groups:
+    - {id: gs, label: guardstack, sub: FastAPI · one process, icon: shield, color: blue, box: [1, -0.5, 3, 0.5]}
+  nodes:
+    - {id: user, label: User or app, sub: client key, icon: user, at: [0, 0], color: gray}
+    - {id: input, label: Input layer, sub: injection · jailbreak · topics · PII, icon: [shield, search], at: [1, 0], color: purple}
+    - {id: model, label: LLM, sub: any OpenAI-compatible API, icon: model, at: [2, -0.5], color: green, pulse: true}
+    - {id: tool, label: Tool layer, sub: allowlist · scopes · schemas, icon: [gear, lock], at: [2, 0.5], color: amber}
+    - {id: output, label: Output layer, sub: leaks · moderation · grounding · JSON, icon: [check, eye], at: [3, 0], color: teal}
+    - {id: opa, label: OPA, sub: Rego · fails closed, icon: [shield, doc], at: [3, 1.5], color: red}
+    - {id: sbx, label: Sandbox, sub: no network · read-only · non-root, icon: [docker, container], at: [2, 1.5], color: blue}
+    - {id: appr, label: Approver, sub: separate key · single use, icon: users, at: [1, 1.5], color: purple}
+    - {id: audit, label: Audit log, sub: HMAC hash chain, icon: logs, at: [4, 1.5], color: gray}
+    - {id: prom, label: Prometheus, sub: decisions per check, icon: prometheus, at: [4, 0.5], color: amber}
+  edges:
+    - {from: user, to: input, kind: secure, packet: lock}
+    - {from: input, to: model, label: redacted, kind: data, packet: doc}
+    - {from: model, to: tool, label: tool call, kind: data}
+    - {from: tool, to: opa, label: decide, kind: control, via: [[3, 0.5]], at: 0.6}
+    - {from: tool, to: sbx, label: run_python, kind: data}
+    - {from: tool, to: appr, label: risky action, kind: async, via: [[1, 0.5]]}
+    - {from: model, to: output, label: answer, kind: data}
+    - {from: output, to: user, label: checked answer, kind: secure, via: [[3, -1.1], [0, -1.1]], at: 0.5}
+    - {from: opa, to: audit, label: every decision, kind: metrics}
+    - {from: output, to: prom, kind: metrics}
+
+- out: tool-call
+  title: One tool call, every check it passes
+  subtitle: Cheap checks first; the policy decides allow, deny or approval; the approval is bound to these exact arguments
+  grid: {dx: 230, dy: 150}
+  nodes:
+    - {id: call, label: Tool call, sub: name + JSON arguments, icon: model, at: [0, 0], color: green}
+    - {id: allow, label: Allowlist, sub: this agent's tools, icon: check, at: [1, 0], color: blue}
+    - {id: scope, label: Scopes, sub: least privilege, icon: key, at: [2, 0], color: blue}
+    - {id: schema, label: Arguments, sub: strict schema · no extras, icon: doc, at: [3, 0], color: amber}
+    - {id: opa, label: OPA policy, sub: SSRF · limits · PII, icon: shield, at: [4, 0], color: red, pulse: true}
+    - {id: deny, label: Blocked, sub: reasons back to the model, icon: deny, at: [4, 1.05], color: red}
+    - {id: appr, label: Human approval, sub: other person · TTL · once, icon: users, at: [3, 1.05], color: purple}
+    - {id: run, label: Execute, sub: output screened + redacted, icon: [gear, container], at: [2, 1.05], color: green}
+    - {id: audit, label: Audit, sub: every decision, icon: logs, at: [1, 1.05], color: gray}
+  edges:
+    - {from: call, to: allow, kind: data}
+    - {from: allow, to: scope, kind: data}
+    - {from: scope, to: schema, kind: data}
+    - {from: schema, to: opa, kind: data, packet: doc}
+    - {from: opa, to: deny, kind: deny}
+    - {from: opa, to: appr, label: needs approval, kind: async}
+    - {from: appr, to: run, label: same arguments, kind: secure}
+    - {from: run, to: audit, kind: metrics}
+
+- out: github-actions
+  title: Delivery with GitHub Actions
+  subtitle: Tests run against a real container engine and a real OPA server; the red-team corpus is a gate, and its report lands in the job summary
+  grid: {dx: 255, dy: 140}
+  nodes:
+    - {id: pr, label: Push / pull request, icon: git, at: [0, 1], color: gray}
+    - {id: test, label: Tests, sub: ruff · pytest · compliance map, icon: [python, check], at: [1, 0], color: blue}
+    - {id: pol, label: Policy, sub: opa test · opa fmt, icon: [shield, doc], at: [1, 1], color: red}
+    - {id: sec, label: Secret scan, sub: gitleaks · full history, icon: key, at: [1, 2], color: amber}
+    - {id: rt, label: Red team, sub: 89 attacks · 65 benign · gate, icon: [bug, chart], at: [2, 0.5], color: purple, pulse: true}
+    - {id: img, label: Image, sub: non-root · smoke test · Trivy, icon: [docker, trivy], at: [3, 0.5], color: blue}
+  edges:
+    - {from: pr, to: test, kind: control}
+    - {from: pr, to: pol, kind: control}
+    - {from: pr, to: sec, kind: control}
+    - {from: test, to: rt, kind: data}
+    - {from: pol, to: rt, kind: data}
+    - {from: rt, to: img, kind: secure}

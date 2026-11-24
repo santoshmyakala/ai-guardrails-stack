@@ -1,0 +1,172 @@
+# Each control: what implements it, the tests that prove it, and the frameworks it supports.
+# `scripts/compliance.py --check` fails if any listed test no longer exists, or if
+# docs/compliance.md is out of date. The mapping supports an assessment; it is not a certification.
+- id: IN-1
+  layer: Input
+  control: Prompt injection detection
+  implementation: src/guardstack/input/injection.py
+  evidence:
+    - tests/test_input.py::test_direct_attacks_are_blocked
+    - tests/test_input.py::test_obfuscated_attacks_are_blocked
+    - tests/test_input.py::test_poisoned_documents_are_dropped_and_clean_ones_kept
+    - tests/test_pipeline.py::test_injection_is_blocked_before_the_model_is_called
+  owasp_llm: [LLM01]
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MANAGE]
+- id: IN-2
+  layer: Input
+  control: Jailbreak detection
+  implementation: src/guardstack/input/injection.py
+  evidence:
+    - tests/test_input.py::test_direct_attacks_are_blocked
+    - tests/test_input.py::test_benign_lookalikes_are_allowed
+  owasp_llm: [LLM01]
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MANAGE]
+- id: IN-3
+  layer: Input
+  control: PII redaction
+  implementation: src/guardstack/input/pii.py
+  evidence:
+    - tests/test_input.py::test_pii_is_redacted_with_validators_and_reversible
+    - tests/test_input.py::test_lookalike_numbers_are_not_redacted
+    - tests/test_pipeline.py::test_pii_never_reaches_the_model
+  owasp_llm: [LLM02]
+  eu_ai_act: [Art. 10]
+  nist_ai_rmf: [MANAGE]
+  notes: Supports GDPR data minimisation (Art. 5(1)(c)).
+- id: IN-4
+  layer: Input
+  control: Topic and scope filter
+  implementation: src/guardstack/input/topics.py
+  evidence:
+    - tests/test_input.py::test_topic_filter_denies_and_scopes
+    - tests/test_pipeline.py::test_denied_topic_is_blocked
+  owasp_llm: []
+  eu_ai_act: [Art. 9]
+  nist_ai_rmf: [MAP, MANAGE]
+- id: TL-1
+  layer: Tool
+  control: Least-privilege access
+  implementation: src/guardstack/tools/guard.py
+  evidence:
+    - tests/test_tools.py::test_unknown_and_unlisted_tools_are_blocked
+    - tests/test_tools.py::test_missing_scope_is_blocked
+  owasp_llm: [LLM06]
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MANAGE]
+- id: TL-2
+  layer: Tool
+  control: Argument validation
+  implementation: src/guardstack/tools/catalog.py, policies/tools.rego
+  evidence:
+    - tests/test_tools.py::test_arguments_are_validated_strictly
+    - policies/tools_test.rego::test_cloud_metadata_ip_is_denied
+    - tests/test_pipeline.py::test_ssrf_attempt_is_blocked_and_the_model_is_told_why
+  owasp_llm: [LLM05, LLM06]
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MANAGE]
+- id: TL-3
+  layer: Tool
+  control: Sandboxed execution
+  implementation: src/guardstack/tools/sandbox.py
+  evidence:
+    - tests/test_sandbox.py::test_has_no_network
+    - tests/test_sandbox.py::test_root_filesystem_is_read_only
+    - tests/test_sandbox.py::test_memory_is_capped
+    - tests/test_sandbox.py::test_runaway_code_is_killed
+  owasp_llm: [LLM05, LLM06]
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MANAGE]
+- id: TL-4
+  layer: Tool
+  control: Human approval
+  implementation: src/guardstack/tools/approvals.py, policies/tools.rego
+  evidence:
+    - tests/test_tools.py::test_approvals_are_bound_single_use_and_need_a_second_person
+    - tests/test_pipeline.py::test_small_refund_runs_large_refund_waits_for_a_human
+    - policies/tools_test.rego::test_every_delete_needs_approval
+  owasp_llm: [LLM06]
+  eu_ai_act: [Art. 14]
+  nist_ai_rmf: [GOVERN, MANAGE]
+- id: OUT-1
+  layer: Output
+  control: Content moderation
+  implementation: src/guardstack/output/moderation.py
+  evidence:
+    - tests/test_output.py::test_moderation_rules
+    - tests/test_output.py::test_model_judge_is_consulted
+  owasp_llm: []
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MEASURE, MANAGE]
+- id: OUT-2
+  layer: Output
+  control: Grounding check
+  implementation: src/guardstack/output/grounding.py
+  evidence:
+    - tests/test_output.py::test_invented_number_is_caught
+    - tests/test_output.py::test_citation_that_does_not_support_the_claim_is_caught
+    - tests/test_pipeline.py::test_hallucinated_figure_is_flagged
+  owasp_llm: [LLM09]
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MEASURE]
+- id: OUT-3
+  layer: Output
+  control: Leak prevention
+  implementation: src/guardstack/output/leakage.py
+  evidence:
+    - tests/test_output.py::test_secrets_are_redacted
+    - tests/test_output.py::test_canary_in_output_blocks
+    - tests/test_pipeline.py::test_system_prompt_leak_is_blocked
+  owasp_llm: [LLM02, LLM07]
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MANAGE]
+- id: OUT-4
+  layer: Output
+  control: Format validation
+  implementation: src/guardstack/output/format.py
+  evidence:
+    - tests/test_output.py::test_schema_violations_are_reported_precisely
+    - tests/test_pipeline.py::test_structured_answer_is_repaired_once
+  owasp_llm: [LLM05]
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MANAGE]
+- id: POL-1
+  layer: Policy
+  control: Policy as code
+  implementation: policies/tools.rego
+  evidence:
+    - policies/tools_test.rego::test_refund_over_agent_limit_is_denied
+    - tests/test_tools.py::test_unreachable_policy_fails_closed
+  owasp_llm: [LLM06]
+  eu_ai_act: [Art. 9]
+  nist_ai_rmf: [GOVERN]
+- id: POL-2
+  layer: Policy
+  control: Audit logging
+  implementation: src/guardstack/policy/audit.py
+  evidence:
+    - tests/test_audit.py::test_edited_record_is_detected
+    - tests/test_audit.py::test_a_forger_without_the_key_cannot_rebuild_the_chain
+    - tests/test_pipeline.py::test_every_decision_is_in_a_verifiable_audit_log
+  owasp_llm: []
+  eu_ai_act: [Art. 12]
+  nist_ai_rmf: [GOVERN, MEASURE]
+- id: POL-3
+  layer: Policy
+  control: Red teaming
+  implementation: src/guardstack/redteam.py, redteam/
+  evidence:
+    - tests/test_redteam.py::test_red_team_gate
+  owasp_llm: [LLM01, LLM02, LLM05, LLM06, LLM07, LLM09]
+  eu_ai_act: [Art. 15]
+  nist_ai_rmf: [MEASURE]
+- id: POL-4
+  layer: Policy
+  control: Compliance mapping
+  implementation: compliance/controls.yaml, scripts/compliance.py
+  evidence:
+    - tests/test_compliance.py::test_every_control_has_existing_evidence
+  owasp_llm: []
+  eu_ai_act: [Art. 11]
+  nist_ai_rmf: [GOVERN]

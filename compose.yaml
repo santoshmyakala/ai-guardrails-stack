@@ -1,0 +1,33 @@
+# Local stack: guardstack and the OPA server that decides tool calls. The model is yours: any
+# OpenAI-compatible endpoint (vLLM, llama.cpp, Ollama, a hosted API), set in GUARDSTACK_MODEL_URL.
+#   cp guardstack.example.yml guardstack.yml   # add callers and documents
+#   GUARDSTACK_MODEL_URL=http://host.docker.internal:11434/v1 GUARDSTACK_AUDIT_KEY=$(openssl rand -hex 32) docker compose up
+services:
+  opa:
+    image: openpolicyagent/opa:1.22.4
+    command: [run, --server, --addr, "0.0.0.0:8181", /policies/tools.rego]
+    volumes: ["./policies:/policies:ro"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  guardstack:
+    build: .
+    depends_on: [opa]
+    ports: ["127.0.0.1:8080:8080"]
+    environment:
+      GUARDSTACK_OPA_URL: http://opa:8181
+      GUARDSTACK_MODEL_URL: ${GUARDSTACK_MODEL_URL:?set GUARDSTACK_MODEL_URL to an OpenAI-compatible endpoint}
+      GUARDSTACK_MODEL: ${GUARDSTACK_MODEL:-default}
+      GUARDSTACK_MODEL_KEY: ${GUARDSTACK_MODEL_KEY:-}
+      GUARDSTACK_AUDIT_KEY: ${GUARDSTACK_AUDIT_KEY:?set GUARDSTACK_AUDIT_KEY (32+ random characters)}
+    volumes:
+      - ./guardstack.yml:/etc/guardstack/guardstack.yml:ro
+      - audit:/var/lib/guardstack
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+volumes:
+  audit:
