@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Build stage: install guardstack and its pinned dependencies into a virtualenv.
-FROM python:3.13.18-slim-trixie AS build
+FROM python:3.15.1-slim-trixie AS build
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 WORKDIR /src
 COPY pyproject.toml README.md ./
@@ -10,7 +10,7 @@ RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip uninstall -y pip setuptools
 
 # Runtime stage: the virtualenv on a patched base, without pip or setuptools, as a non-root user.
-FROM python:3.13.18-slim-trixie
+FROM python:3.15.1-slim-trixie
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PATH=/opt/venv/bin:$PATH
 RUN apt-get update \
  && apt-get upgrade -y --no-install-recommends \
