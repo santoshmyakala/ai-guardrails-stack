@@ -61,7 +61,7 @@ jobs:
           docker run -d --name opa -p 127.0.0.1:8181:8181 -v "$PWD/policies:/policies:ro" \
             "$OPA_IMAGE" run --server --addr 0.0.0.0:8181 /policies/tools.rego
           for i in $(seq 30); do curl -fsS http://127.0.0.1:8181/health && break; sleep 1; done
-      - name: Red-team report (gate: detection >= 95 %, false positives <= 2 %)
+      - name: "Red-team report (gate: detection >= 95 %, false positives <= 2 %)"
         run: |
           guardstack redteam --corpus redteam --config guardstack.example.yml --opa http://127.0.0.1:8181 \
             --markdown redteam-report.md --min-detection 0.95 --max-false-positive 0.02 > /dev/null || status=$?
